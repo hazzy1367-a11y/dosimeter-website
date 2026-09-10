@@ -1,34 +1,91 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dosimeter History</title>
+
+    <title>Dosimeter Dashboard</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
             margin: 0;
-            padding: 30px;
+            padding: 20px;
+            font-family: Arial, sans-serif;
             background: #f4f6f8;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
         }
 
-        h1 {
+        .header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0 0 10px 0;
+        }
+
+        .device {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .card-title {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .unit {
+            font-size: 16px;
+            margin-left: 5px;
+        }
+
+        .history-box {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .history-title {
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
         }
 
         th, td {
@@ -41,9 +98,40 @@
             background: #eeeeee;
         }
 
+        button {
+            display: block;
+            margin: 20px auto 0 auto;
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
         #status {
             text-align: center;
-            margin-top: 15px;
+            margin: 15px 0;
+            font-size: 15px;
+        }
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 10px;
+            }
+
+            .cards {
+                grid-template-columns: 1fr;
+            }
+
+            .value {
+                font-size: 28px;
+            }
+
+            th, td {
+                padding: 7px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -52,89 +140,307 @@
 
 <div class="container">
 
-    <h1>Dosimeter History</h1>
-    <div id="drValue">DR: --</div>
-    <div id="status">Loading...</div>
+    <!-- Header -->
 
-    <table>
-        <thead>
-            <tr>
-                <th>No.</th>
-                <th>Date</th>
-                <th>Dose</th>
-            </tr>
-        </thead>
+    <div class="header">
 
-        <tbody id="historyTable">
-        </tbody>
-    </table>
+        <h1>Dosimeter Dashboard</h1>
+
+        <div class="device">
+            Device ID: DEVICE001
+        </div>
+
+    </div>
+
+
+    <!-- DR and Total Dose -->
+
+    <div class="cards">
+
+        <div class="card">
+
+            <div class="card-title">
+                Dose Rate
+            </div>
+
+            <div class="value">
+
+                <span id="drValue">--</span>
+
+                <span class="unit">
+                    uSv/h
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="card-title">
+                Total Dose
+            </div>
+
+            <div class="value">
+
+                <span id="totalDoseValue">--</span>
+
+                <span class="unit">
+                    uSv
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- Status -->
+
+    <div id="status">
+        Loading...
+    </div>
+
+
+    <!-- History -->
+
+    <div class="history-box">
+
+        <div class="history-title">
+            30-Day Dose History
+        </div>
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>No.</th>
+                    <th>Date</th>
+                    <th>Dose</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="historyTable">
+
+            </tbody>
+
+        </table>
+
+        <button onclick="loadData()">
+            Refresh
+        </button>
+
+    </div>
 
 </div>
 
-<script>
-const cpsURL =
-"https://dgrdatabase-27277-default-rtdb.asia-southeast1.firebasedatabase.app/cps.json";
 
-fetch(cpsURL)
-.then(response => response.json())
-.then(cps => {
-document.getElementById("drValue").innerText =
-    "DR: " + cps;
-})
-.catch(error => {
-    document.getElementById("cpsValue").innerText =
-        "CPS: Error";
-});
-const firebaseURL =
+<script>
+
+/* =========================================
+   Firebase URLs
+   ========================================= */
+
+const drURL =
+"https://dgrdatabase-27277-default-rtdb.asia-southeast1.firebasedatabase.app/devices/DEVICE001/DR.json";
+
+
+const totalDoseURL =
+"https://dgrdatabase-27277-default-rtdb.asia-southeast1.firebasedatabase.app/devices/DEVICE001/totaldose.json";
+
+
+const historyURL =
 "https://dgrdatabase-27277-default-rtdb.asia-southeast1.firebasedatabase.app/devices/DEVICE001/history.json";
 
-fetch(firebaseURL)
-.then(response => response.json())
-.then(data => {
 
-    const table = document.getElementById("historyTable");
-    const status = document.getElementById("status");
 
-    if (!data) {
-        status.innerText = "No data found";
-        return;
-    }
+/* =========================================
+   Load all Firebase data
+   ========================================= */
 
-    const records = Array.isArray(data) ? data : Object.values(data);
-
-    records.forEach((record, index) => {
-
-        const parts = record.trim().split(/\s+/);
-
-        const number = index + 1;
-
-        const date = parts[1] || "";
-        const dose = parts[2] || "";
-
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td>${number}</td>
-            <td>${date}</td>
-            <td>${dose}</td>
-        `;
-
-        table.appendChild(row);
-    });
-
-    status.innerText = records.length + " records loaded";
-
-})
-.catch(error => {
+function loadData() {
 
     document.getElementById("status").innerText =
-        "Error loading data";
+        "Loading...";
 
-    console.error(error);
 
-});
+    /* Clear old history */
+
+    document.getElementById("historyTable").innerHTML = "";
+
+
+    /* =====================================
+       Read DR
+       ===================================== */
+
+    fetch(drURL)
+
+    .then(response => response.json())
+
+    .then(dr => {
+
+        if (dr === null) {
+
+            document.getElementById("drValue").innerText =
+                "--";
+
+        } else {
+
+            document.getElementById("drValue").innerText =
+                dr;
+
+        }
+
+    })
+
+    .catch(error => {
+
+        document.getElementById("drValue").innerText =
+            "Error";
+
+    });
+
+
+
+    /* =====================================
+       Read Total Dose
+       ===================================== */
+
+    fetch(totalDoseURL)
+
+    .then(response => response.json())
+
+    .then(totalDose => {
+
+        if (totalDose === null) {
+
+            document.getElementById("totalDoseValue").innerText =
+                "--";
+
+        } else {
+
+            document.getElementById("totalDoseValue").innerText =
+                totalDose;
+
+        }
+
+    })
+
+    .catch(error => {
+
+        document.getElementById("totalDoseValue").innerText =
+            "Error";
+
+    });
+
+
+
+    /* =====================================
+       Read 30-Day History
+       ===================================== */
+
+    fetch(historyURL)
+
+    .then(response => response.json())
+
+    .then(data => {
+
+        if (!data) {
+
+            document.getElementById("status").innerText =
+                "No history data";
+
+            return;
+
+        }
+
+
+        const records =
+            Array.isArray(data)
+            ? data
+            : Object.values(data);
+
+
+        const table =
+            document.getElementById("historyTable");
+
+
+        records.forEach((record, index) => {
+
+
+            /*
+               Example record:
+
+               1) 09/09/2026    3.000uSv
+            */
+
+
+            const parts =
+                record.trim().split(/\s+/);
+
+
+            const number =
+                index + 1;
+
+
+            const date =
+                parts[1] || "";
+
+
+            const dose =
+                parts[2] || "";
+
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+
+                <td>${number}</td>
+
+                <td>${date}</td>
+
+                <td>${dose}</td>
+
+            `;
+
+
+            table.appendChild(row);
+
+        });
+
+
+        document.getElementById("status").innerText =
+            records.length + " records loaded";
+
+
+    })
+
+    .catch(error => {
+
+        document.getElementById("status").innerText =
+            "Error loading history";
+
+        console.error(error);
+
+    });
+
+}
+
+
+/* =========================================
+   Load data when page opens
+   ========================================= */
+
+loadData();
 
 </script>
 
 </body>
 </html>
+```
